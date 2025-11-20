@@ -98,3 +98,4 @@ test('student cannot vote twice for the same position', function () {
         ->assertSessionHasErrors('candidate_id');
 });
 
+
