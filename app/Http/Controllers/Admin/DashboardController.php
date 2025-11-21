@@ -4,15 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\Course;
 use App\Models\Election;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(): Response
     {
         $totalVoters = User::where('role', 'student')->count();
         $activeElections = Election::where('is_active', true)
@@ -56,35 +56,14 @@ class DashboardController extends Controller
             ->orderBy('year_level')
             ->get();
 
-        $pendingApprovalsQuery = User::where('role', 'student')
-            ->where('status', 'pending');
-
-        $pendingApprovalsCount = (clone $pendingApprovalsQuery)->count();
-
-        $pendingApprovals = (clone $pendingApprovalsQuery)
-            ->orderBy('created_at')
-            ->limit(5)
-            ->get()
-            ->map(function ($user) {
-                return [
-                    'id' => $user->id,
-                    'first_name' => $user->first_name,
-                    'last_name' => $user->last_name,
-                    'email' => $user->email,
-                    'course' => $user->course,
-                    'year_level' => $user->year_level,
-                    'registered_at' => $user->created_at->format('M d, Y'),
-                ];
-            });
-
         return Inertia::render('Admin/Dashboard', [
             'totalVoters' => $totalVoters,
             'activeElections' => $activeElections,
             'upcomingElections' => $upcomingElections,
             'recentActivities' => $recentActivities,
             'yearLevelBreakdown' => $yearLevelBreakdown,
-            'pendingApprovals' => $pendingApprovals,
-            'pendingApprovalsCount' => $pendingApprovalsCount,
+            'courses' => Course::orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 }

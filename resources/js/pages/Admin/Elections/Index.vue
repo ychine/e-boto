@@ -5,11 +5,11 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Form, Head, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { BreadcrumbItemType } from '@/types';
 import ElectionController from '@/actions/App/Http/Controllers/Admin/ElectionController';
 
-defineProps<{
+const props = defineProps<{
     elections: Array<{
         id: number;
         title: string;
@@ -20,11 +20,33 @@ defineProps<{
         is_active: boolean;
         created_by: string;
     }>;
+    attendanceReport: {
+        selectedElectionId: number | null;
+        options: Array<{
+            id: number;
+            title: string;
+        }>;
+        summary: {
+            electionId: number;
+            totalRegistered: number;
+            attended: number;
+            absent: number;
+            attendanceRate: number;
+            courseBreakdown: Array<{
+                course: string;
+                count: number;
+            }>;
+            generatedAt: string;
+        } | null;
+    };
 }>();
 
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const editingElection = ref<any>(null);
+const selectedElectionId = ref<number | null>(props.attendanceReport.selectedElectionId);
+const attendanceSummary = computed(() => props.attendanceReport.summary);
+const attendanceOptions = computed(() => props.attendanceReport.options);
 
 const breadcrumbs: BreadcrumbItemType[] = [
     { title: 'Dashboard', href: '/admin/dashboard' },
@@ -40,6 +62,45 @@ function deleteElection(id: number) {
     if (confirm('Are you sure you want to delete this election?')) {
         router.delete(ElectionController.destroy.url(id));
     }
+}
+
+watch(
+    () => props.attendanceReport.selectedElectionId,
+    (value) => {
+        selectedElectionId.value = value;
+    },
+);
+
+watch(
+    () => selectedElectionId.value,
+    (value, oldValue) => {
+        if (!value || value === oldValue) {
+            return;
+        }
+
+        router.get(
+            ElectionController.index.url({
+                query: {
+                    attendance_election_id: value,
+                },
+            }),
+            {},
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                only: ['attendanceReport'],
+            },
+        );
+    },
+);
+
+function downloadAttendanceReport(): void {
+    if (!selectedElectionId.value) {
+        return;
+    }
+
+    window.location.href = ElectionController.exportAttendance.url(selectedElectionId.value);
 }
 </script>
 
@@ -89,10 +150,10 @@ function deleteElection(id: number) {
                                             election.status === 'active',
                                         'bg-yellow-100 text-yellow-800':
                                             election.status === 'upcoming',
-                                        'bg-gray-100 text-gray-800':
-                                            election.status === 'ended',
-                                        'bg-gray-100 text-gray-800':
-                                            election.status === 'inactive',
+                                        'bg-gray-100 text-gray-800': [
+                                            'ended',
+                                            'inactive',
+                                        ].includes(election.status),
                                     }"
                                     class="rounded-full px-2 py-1 text-xs font-medium"
                                 >
@@ -129,6 +190,101 @@ function deleteElection(id: number) {
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div class="rounded-lg border bg-white p-6 shadow-sm space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-semibold">Attendance Monitor</h2>
+                        <p class="text-sm text-muted-foreground">
+                            Track participation per election and export CSV reports.
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <select
+                            v-model.number="selectedElectionId"
+                            class="rounded-md border border-gray-300 px-3 py-2"
+                        >
+                            <option value="">Select election</option>
+                            <option
+                                v-for="option in attendanceOptions"
+                                :key="option.id"
+                                :value="option.id"
+                            >
+                                {{ option.title }}
+                            </option>
+                        </select>
+                        <Button
+                            variant="outline"
+                            :disabled="!attendanceSummary"
+                            @click="downloadAttendanceReport"
+                        >
+                            Download CSV
+                        </Button>
+                    </div>
+                </div>
+
+                <div
+                    v-if="attendanceSummary"
+                    class="grid gap-4 md:grid-cols-3"
+                >
+                    <div class="rounded-lg border bg-gray-50 p-4">
+                        <div class="text-sm text-muted-foreground">Registered Voters</div>
+                        <div class="text-3xl font-semibold">
+                            {{ attendanceSummary.totalRegistered }}
+                        </div>
+                    </div>
+                    <div class="rounded-lg border bg-gray-50 p-4">
+                        <div class="text-sm text-muted-foreground">Checked-In</div>
+                        <div class="text-3xl font-semibold">
+                            {{ attendanceSummary.attended }}
+                        </div>
+                        <p class="text-xs text-muted-foreground">
+                            {{ attendanceSummary.absent }} yet to vote
+                        </p>
+                    </div>
+                    <div class="rounded-lg border bg-gray-50 p-4">
+                        <div class="text-sm text-muted-foreground">Attendance Rate</div>
+                        <div class="text-3xl font-semibold">
+                            {{ attendanceSummary.attendanceRate }}%
+                        </div>
+                        <p class="text-xs text-muted-foreground">
+                            Generated {{ attendanceSummary.generatedAt }}
+                        </p>
+                    </div>
+                </div>
+
+                <div v-if="attendanceSummary" class="overflow-x-auto">
+                    <table class="w-full table-fixed">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="px-4 py-2 text-left w-3/4 min-w-[200px]">Course</th>
+                                <th class="px-4 py-2 text-right w-1/4 min-w-[120px]">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="course in attendanceSummary.courseBreakdown"
+                                :key="course.course"
+                                class="border-b"
+                            >
+                                <td class="px-4 py-2">
+                                    {{ course.course }}
+                                </td>
+                                <td class="px-4 py-2 text-right">
+                                    {{ course.count }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div
+                    v-else
+                    class="text-sm text-muted-foreground"
+                >
+                    No attendance data for this election yet.
+                </div>
             </div>
         </div>
 

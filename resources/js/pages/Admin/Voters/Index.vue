@@ -1,18 +1,27 @@
 <script setup lang="ts">
 import AdminLayout from '@/layouts/AdminLayout.vue';
+import VoterCredentialModal from '@/components/VoterCredentialModal.vue';
+import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Form, Head, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, useForm } from '@inertiajs/vue3';
+import { ref, toRefs } from 'vue';
 import type { BreadcrumbItemType } from '@/types';
 
-defineProps<{
+const props = defineProps<{
     voters: Array<{
         id: number;
         first_name: string | null;
         last_name: string | null;
         email: string;
+        student_id: string | null;
+        lrn: string | null;
+        phone: string | null;
+        course: string | null;
+        section: string | null;
+        year_level: string | null;
         age_group: string | null;
         gender: string | null;
         location: string | null;
@@ -22,11 +31,32 @@ defineProps<{
         registered_date: string;
     }>;
     totalVoters: number;
-    pendingApprovals: number;
+    courses: Array<{
+        id: number;
+        name: string;
+    }>;
 }>();
 
 const showEditModal = ref(false);
+const showCredentialModal = ref(false);
 const editingVoter = ref<any>(null);
+const { voters, totalVoters, courses } = toRefs(props);
+
+const editForm = useForm({
+    first_name: '',
+    last_name: '',
+    email: '',
+    student_id: '',
+    lrn: '',
+    phone: '',
+    course: '',
+    section: '',
+    year_level: 1,
+    age_group: '',
+    gender: '',
+    location: '',
+    status: 'pending',
+});
 
 const breadcrumbs: BreadcrumbItemType[] = [
     { title: 'Dashboard', href: '/admin/dashboard' },
@@ -35,11 +65,44 @@ const breadcrumbs: BreadcrumbItemType[] = [
 
 function openEditModal(voter: any) {
     editingVoter.value = voter;
+    editForm.clearErrors();
+    editForm.first_name = voter.first_name ?? '';
+    editForm.last_name = voter.last_name ?? '';
+    editForm.email = voter.email ?? '';
+    editForm.student_id = voter.student_id ?? '';
+    editForm.lrn = voter.lrn ?? '';
+    editForm.phone = voter.phone ?? '';
+    editForm.course = voter.course ?? '';
+    editForm.section = voter.section ?? '';
+    editForm.year_level = voter.year_level ? Number(voter.year_level) : 1;
+    editForm.age_group = voter.age_group ?? '';
+    editForm.gender = voter.gender ?? '';
+    editForm.location = voter.location ?? '';
+    editForm.status = voter.status ?? 'pending';
     showEditModal.value = true;
 }
 
-function updateStatus(voterId: number, status: string) {
-    router.patch(`/admin/voters/${voterId}/status`, { status });
+function closeEditModal() {
+    showEditModal.value = false;
+    editingVoter.value = null;
+    editForm.reset();
+    editForm.clearErrors();
+}
+
+function submitEdit() {
+    if (!editingVoter.value) {
+        return;
+    }
+
+    editForm.transform((data) => ({
+        ...data,
+        year_level: Number(data.year_level),
+    })).put(`/admin/voters/${editingVoter.value.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeEditModal();
+        },
+    });
 }
 </script>
 
@@ -48,25 +111,24 @@ function updateStatus(voterId: number, status: string) {
 
     <AdminLayout :breadcrumbs="breadcrumbs">
         <div class="space-y-6 p-6">
-            <h1 class="text-3xl font-bold">Manage Voters</h1>
-
-            <!-- Cards -->
-            <div class="grid gap-4 md:grid-cols-2">
-                <div class="rounded-lg border bg-white p-6 shadow-sm">
-                    <div class="text-sm font-medium text-gray-600">
-                        Total Voters
-                    </div>
-                    <div class="mt-2 text-3xl font-bold text-gray-900">
-                        {{ totalVoters }}
-                    </div>
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold">Manage Voters</h1>
+                    <p class="text-sm text-muted-foreground">
+                        Create and review registered voters. Only administrators can add accounts.
+                    </p>
                 </div>
-                <div class="rounded-lg border bg-white p-6 shadow-sm">
-                    <div class="text-sm font-medium text-gray-600">
-                        Pending Approvals
-                    </div>
-                    <div class="mt-2 text-3xl font-bold text-gray-900">
-                        {{ pendingApprovals }}
-                    </div>
+                <Button @click="showCredentialModal = true">
+                    Register Voter
+                </Button>
+            </div>
+
+            <div class="rounded-lg border bg-white p-6 shadow-sm">
+                <div class="text-sm font-medium text-gray-600">
+                    Total Voters
+                </div>
+                <div class="mt-2 text-3xl font-bold text-gray-900">
+                    {{ totalVoters }}
                 </div>
             </div>
 
@@ -78,6 +140,7 @@ function updateStatus(voterId: number, status: string) {
                             <th class="px-4 py-3 text-left">First Name</th>
                             <th class="px-4 py-3 text-left">Last Name</th>
                             <th class="px-4 py-3 text-left">Email</th>
+                            <th class="px-4 py-3 text-left">Course</th>
                             <th class="px-4 py-3 text-left">Age Group</th>
                             <th class="px-4 py-3 text-left">Gender</th>
                             <th class="px-4 py-3 text-left">Location</th>
@@ -101,6 +164,9 @@ function updateStatus(voterId: number, status: string) {
                                 {{ voter.last_name || 'N/A' }}
                             </td>
                             <td class="px-4 py-3">{{ voter.email }}</td>
+                            <td class="px-4 py-3">
+                                {{ voter.course || 'N/A' }}
+                            </td>
                             <td class="px-4 py-3">
                                 {{ voter.age_group || 'N/A' }}
                             </td>
@@ -157,50 +223,155 @@ function updateStatus(voterId: number, status: string) {
         <Dialog v-model:open="showEditModal">
             <DialogContent class="sm:max-w-md">
                 <DialogTitle>Edit Voter</DialogTitle>
-                <div v-if="editingVoter" class="space-y-4">
-                    <div>
-                        <Label>First Name</Label>
-                        <div class="mt-1 text-sm">
-                            {{ editingVoter.first_name || 'N/A' }}
+                <form v-if="editingVoter" class="space-y-4" @submit.prevent="submitEdit">
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <Label for="edit-first_name">First Name</Label>
+                            <Input
+                                id="edit-first_name"
+                                v-model="editForm.first_name"
+                                required
+                            />
+                            <InputError :message="editForm.errors.first_name" />
+                        </div>
+                        <div>
+                            <Label for="edit-last_name">Last Name</Label>
+                            <Input
+                                id="edit-last_name"
+                                v-model="editForm.last_name"
+                                required
+                            />
+                            <InputError :message="editForm.errors.last_name" />
+                        </div>
+                    </div>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <Label for="edit-email">Email</Label>
+                            <Input
+                                id="edit-email"
+                                type="email"
+                                v-model="editForm.email"
+                                required
+                            />
+                            <InputError :message="editForm.errors.email" />
+                        </div>
+                        <div>
+                            <Label for="edit-phone">Phone</Label>
+                            <Input id="edit-phone" v-model="editForm.phone" />
+                            <InputError :message="editForm.errors.phone" />
+                        </div>
+                    </div>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <Label for="edit-student_id">Student ID</Label>
+                            <Input
+                                id="edit-student_id"
+                                v-model="editForm.student_id"
+                                required
+                            />
+                            <InputError :message="editForm.errors.student_id" />
+                        </div>
+                        <div>
+                            <Label for="edit-lrn">LRN</Label>
+                            <Input
+                                id="edit-lrn"
+                                v-model="editForm.lrn"
+                                inputmode="numeric"
+                                maxlength="12"
+                                pattern="\d{12}"
+                            />
+                            <InputError :message="editForm.errors.lrn" />
+                        </div>
+                    </div>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <Label for="edit-course">Course</Label>
+                            <select
+                                id="edit-course"
+                                v-model="editForm.course"
+                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+                                required
+                            >
+                                <option value="">Select course</option>
+                                <option
+                                    v-for="course in courses"
+                                    :key="course.id"
+                                    :value="course.name"
+                                >
+                                    {{ course.name }}
+                                </option>
+                            </select>
+                            <InputError :message="editForm.errors.course" />
+                        </div>
+                        <div>
+                            <Label for="edit-section">Section</Label>
+                            <Input id="edit-section" v-model="editForm.section" />
+                            <InputError :message="editForm.errors.section" />
+                        </div>
+                    </div>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <Label for="edit-year_level">Year Level</Label>
+                            <Input
+                                id="edit-year_level"
+                                type="number"
+                                min="1"
+                                max="4"
+                                step="1"
+                                v-model.number="editForm.year_level"
+                                required
+                            />
+                            <InputError :message="editForm.errors.year_level" />
+                        </div>
+                        <div>
+                            <Label for="edit-age_group">Age Group</Label>
+                            <Input id="edit-age_group" v-model="editForm.age_group" />
+                            <InputError :message="editForm.errors.age_group" />
+                        </div>
+                    </div>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <Label for="edit-gender">Gender</Label>
+                            <Input id="edit-gender" v-model="editForm.gender" />
+                            <InputError :message="editForm.errors.gender" />
+                        </div>
+                        <div>
+                            <Label for="edit-location">Location</Label>
+                            <Input id="edit-location" v-model="editForm.location" />
+                            <InputError :message="editForm.errors.location" />
                         </div>
                     </div>
                     <div>
-                        <Label>Last Name</Label>
-                        <div class="mt-1 text-sm">
-                            {{ editingVoter.last_name || 'N/A' }}
-                        </div>
-                    </div>
-                    <div>
-                        <Label>Email</Label>
-                        <div class="mt-1 text-sm">{{ editingVoter.email }}</div>
-                    </div>
-                    <div>
-                        <Label for="status">Status</Label>
+                        <Label for="edit-status">Status</Label>
                         <select
-                            id="status"
-                            v-model="editingVoter.status"
+                            id="edit-status"
+                            v-model="editForm.status"
                             class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-                            @change="
-                                updateStatus(editingVoter.id, editingVoter.status)
-                            "
+                            required
                         >
                             <option value="pending">Pending</option>
                             <option value="approved">Approved</option>
                             <option value="rejected">Rejected</option>
                         </select>
+                        <InputError :message="editForm.errors.status" />
                     </div>
                     <div class="flex justify-end gap-2">
                         <Button
                             type="button"
                             variant="outline"
-                            @click="showEditModal = false"
+                            @click="closeEditModal"
                         >
-                            Close
+                            Cancel
+                        </Button>
+                        <Button type="submit" :disabled="editForm.processing">
+                            {{ editForm.processing ? 'Saving...' : 'Save Changes' }}
                         </Button>
                     </div>
-                </div>
+                </form>
             </DialogContent>
         </Dialog>
+
+        <VoterCredentialModal v-model:open="showCredentialModal" :courses="courses" />
     </AdminLayout>
 </template>
 

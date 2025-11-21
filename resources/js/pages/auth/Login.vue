@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthBase from '@/layouts/AuthLayout.vue';
-import { register } from '@/routes';
 import { store } from '@/routes/login';
 import password from '@/routes/password';
 import { Form, Head, usePage } from '@inertiajs/vue3';
@@ -17,7 +16,6 @@ import { ref, watch, nextTick } from 'vue';
 defineProps<{
     status?: string;
     canResetPassword: boolean;
-    canRegister: boolean;
 }>();
 
 const showToast = ref(false);
@@ -128,13 +126,6 @@ watch(
                 </Button>
             </div>
 
-            <div
-                class="text-center text-sm text-muted-foreground"
-                v-if="canRegister"
-            >
-                Don't have an account?
-                <TextLink :href="register()" :tabindex="5">Sign up</TextLink>
-            </div>
         </Form>
 
         <SimpleToast v-if="showToast" :message="toastMessage" type="error" />

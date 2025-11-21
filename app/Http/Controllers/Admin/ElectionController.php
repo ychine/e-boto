@@ -3,19 +3,22 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Attendance;
 use App\Models\Election;
+use App\Models\User;
 use App\Support\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ElectionController extends Controller
 {
-    public function __construct(public AuditLogger $auditLogger)
-    {
-    }
+    public function __construct(public AuditLogger $auditLogger) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $elections = Election::with('creator')
             ->orderBy('created_at', 'desc')
@@ -23,7 +26,7 @@ class ElectionController extends Controller
             ->map(function ($election) {
                 $now = now();
                 $status = 'inactive';
-                
+
                 // Check if election hasn't started yet
                 if ($election->starts_at && $election->starts_at > $now) {
                     $status = 'upcoming';
@@ -45,7 +48,7 @@ class ElectionController extends Controller
                 else {
                     $status = 'ended';
                 }
-                
+
                 return [
                     'id' => $election->id,
                     'title' => $election->title,
@@ -58,8 +61,18 @@ class ElectionController extends Controller
                 ];
             });
 
+        $attendanceOptions = Election::orderBy('title')
+            ->get(['id', 'title']);
+
+        $selectedElectionId = $request->integer('attendance_election_id') ?: $attendanceOptions->first()?->id;
+
         return Inertia::render('Admin/Elections/Index', [
             'elections' => $elections,
+            'attendanceReport' => [
+                'selectedElectionId' => $selectedElectionId,
+                'options' => $attendanceOptions,
+                'summary' => $this->buildAttendanceSummary($selectedElectionId),
+            ],
         ]);
     }
 
@@ -146,5 +159,103 @@ class ElectionController extends Controller
         );
 
         return redirect()->route('admin.elections.index');
+    }
+
+    public function exportAttendance(Election $election): StreamedResponse
+    {
+        $filename = sprintf(
+            'attendance-%s-%s.csv',
+            Str::slug($election->title ?: 'election'),
+            now()->format('Ymd-His'),
+        );
+
+        return response()->streamDownload(function () use ($election): void {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, ['Election', $election->title]);
+            fputcsv($handle, []);
+
+            fputcsv($handle, [
+                'Student ID',
+                'LRN',
+                'First Name',
+                'Last Name',
+                'Email',
+                'Course',
+                'Section',
+                'Year Level',
+                'Gender',
+                'Location',
+                'Voted At',
+            ]);
+
+            Attendance::with('user')
+                ->where('election_id', $election->id)
+                ->orderBy('voted_at')
+                ->chunk(200, function ($rows) use ($handle): void {
+                    foreach ($rows as $attendance) {
+                        $user = $attendance->user;
+
+                        fputcsv($handle, [
+                            $user?->student_id,
+                            $user?->lrn,
+                            $user?->first_name,
+                            $user?->last_name,
+                            $user?->email,
+                            $attendance->course ?? $user?->course,
+                            $user?->section,
+                            $user?->year_level,
+                            $user?->gender,
+                            $user?->location,
+                            optional($attendance->voted_at)->toDateTimeString(),
+                        ]);
+                    }
+                });
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv',
+        ]);
+    }
+
+    private function buildAttendanceSummary(?int $electionId): ?array
+    {
+        if (! $electionId) {
+            return null;
+        }
+
+        $totalRegistered = User::where('role', 'student')->count();
+
+        $attendanceCount = Attendance::where('election_id', $electionId)->count();
+
+        $courseBreakdown = Attendance::query()
+            ->leftJoin('users', 'users.id', '=', 'attendances.user_id')
+            ->select([
+                DB::raw('COALESCE(attendances.course, users.course, "Unspecified") as course_name'),
+                DB::raw('COUNT(*) as count'),
+            ])
+            ->where('attendances.election_id', $electionId)
+            ->groupBy('course_name')
+            ->orderBy('course_name')
+            ->get()
+            ->map(fn ($row) => [
+                'course' => $row->course_name,
+                'count' => (int) $row->count,
+            ])
+            ->values();
+
+        $absent = max(0, $totalRegistered - $attendanceCount);
+
+        return [
+            'electionId' => $electionId,
+            'totalRegistered' => $totalRegistered,
+            'attended' => $attendanceCount,
+            'absent' => $absent,
+            'attendanceRate' => $totalRegistered > 0
+                ? round(($attendanceCount / $totalRegistered) * 100, 1)
+                : 0,
+            'courseBreakdown' => $courseBreakdown,
+            'generatedAt' => now()->toDateTimeString(),
+        ];
     }
 }

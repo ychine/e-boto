@@ -36,6 +36,3 @@ test('admin dashboard includes pending approvals summary', function () {
             )
         );
 });
-
-
-

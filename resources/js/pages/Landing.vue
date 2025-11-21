@@ -8,7 +8,6 @@ import { Form, Head, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch, nextTick } from 'vue';
 
 const props = defineProps<{
-    canRegister: boolean;
     currentElection?: {
         id: number;
         title: string;
@@ -18,20 +17,9 @@ const props = defineProps<{
 
 const showAdminLogin = ref(false);
 const showStudentLogin = ref(false);
-const showRegister = ref(false);
 const loginMode = ref<'admin' | 'student'>('student');
 const showToast = ref(false);
 const toastMessage = ref('');
-const registerFirstName = ref('');
-const registerLastName = ref('');
-
-const registerFullName = computed(() => {
-    if (registerFirstName.value && registerLastName.value) {
-        return `${registerFirstName.value} ${registerLastName.value}`;
-    }
-
-    return registerFirstName.value || registerLastName.value || '';
-});
 
 const page = usePage();
 
@@ -173,15 +161,8 @@ function openLogin(mode: 'admin' | 'student') {
                     </p>
                 </div>
 
-                <!-- Sign Up Link -->
-                <div class="mt-6 text-center">
-                    <button
-                        v-if="canRegister"
-                        @click="showRegister = true"
-                        class="text-sm text-green-600 hover:underline dark:text-green-400"
-                    >
-                        Don't have an account? Sign Up
-                    </button>
+                <div class="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+                    Need an account? Please contact your administrator.
                 </div>
             </div>
         </div>
@@ -297,145 +278,6 @@ function openLogin(mode: 'admin' | 'student') {
                     <Button type="submit" :disabled="processing">
                         <span v-if="processing">Logging in...</span>
                         <span v-else>Login</span>
-                    </Button>
-                </div>
-            </Form>
-        </DialogContent>
-    </Dialog>
-
-    <!-- Register Modal -->
-    <Dialog v-model:open="showRegister">
-        <DialogContent class="sm:max-w-lg">
-            <DialogTitle>Sign Up</DialogTitle>
-            <Form
-                action="/register"
-                method="post"
-                @submit="() => { showRegister = false; }"
-                v-slot="{ processing }"
-                class="space-y-4"
-            >
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <Label for="first_name">First Name</Label>
-                        <Input
-                            id="first_name"
-                            name="first_name"
-                            type="text"
-                            required
-                            v-model="registerFirstName"
-                        />
-                    </div>
-                    <div>
-                        <Label for="last_name">Last Name</Label>
-                        <Input
-                            id="last_name"
-                            name="last_name"
-                            type="text"
-                            required
-                            v-model="registerLastName"
-                        />
-                    </div>
-                </div>
-                <input type="hidden" name="name" :value="registerFullName" />
-                <div>
-                    <Label for="register-email">Email</Label>
-                    <Input
-                        id="register-email"
-                        name="email"
-                        type="email"
-                        required
-                    />
-                </div>
-                <div>
-                    <Label for="register-password">Password</Label>
-                    <Input
-                        id="register-password"
-                        name="password"
-                        type="password"
-                        required
-                    />
-                </div>
-                <div>
-                    <Label for="password_confirmation">Confirm Password</Label>
-                    <Input
-                        id="password_confirmation"
-                        name="password_confirmation"
-                        type="password"
-                        required
-                    />
-                </div>
-                <div>
-                    <Label for="role">Role</Label>
-                    <select
-                        id="role"
-                        name="role"
-                        class="w-full rounded-md border border-gray-300 px-3 py-2"
-                    >
-                        <option value="student">Student</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <Label for="year_level">Year Level</Label>
-                        <Input
-                            id="year_level"
-                            name="year_level"
-                            type="number"
-                            min="1"
-                            max="4"
-                            step="1"
-                            inputmode="numeric"
-                        />
-                    </div>
-                    <div>
-                        <Label for="age_group">Age Group</Label>
-                        <select
-                            id="age_group"
-                            name="age_group"
-                            class="w-full rounded-md border border-gray-300 px-3 py-2"
-                        >
-                            <option value="">Select</option>
-                            <option value="18-20">18-20</option>
-                            <option value="21-23">21-23</option>
-                            <option value="24-26">24-26</option>
-                            <option value="27+">27+</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <Label for="gender">Gender</Label>
-                        <select
-                            id="gender"
-                            name="gender"
-                            class="w-full rounded-md border border-gray-300 px-3 py-2"
-                        >
-                            <option value="">Select</option>
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    <div>
-                        <Label for="location">Location</Label>
-                        <Input
-                            id="location"
-                            name="location"
-                            type="text"
-                        />
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        @click="showRegister = false"
-                    >
-                        Cancel
-                    </Button>
-                    <Button type="submit" :disabled="processing">
-                        {{ processing ? 'Creating Account...' : 'Create Account' }}
                     </Button>
                 </div>
             </Form>

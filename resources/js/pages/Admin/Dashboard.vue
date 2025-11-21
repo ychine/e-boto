@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import TextLink from '@/components/TextLink.vue';
+import VoterCredentialModal from '@/components/VoterCredentialModal.vue';
 import { Button } from '@/components/ui/button';
 import { Head, router } from '@inertiajs/vue3';
 import { ref, toRefs } from 'vue';
@@ -26,43 +26,16 @@ const props = defineProps<{
         year_level: string;
         count: number;
     }>;
-    pendingApprovals: Array<{
+    courses: Array<{
         id: number;
-        first_name: string | null;
-        last_name: string | null;
-        email: string;
-        course: string | null;
-        year_level: string | null;
-        registered_at: string;
+        name: string;
     }>;
-    pendingApprovalsCount: number;
 }>();
 
-const {
-    totalVoters,
-    activeElections,
-    upcomingElections,
-    recentActivities,
-    yearLevelBreakdown,
-    pendingApprovals,
-    pendingApprovalsCount,
-} = toRefs(props);
+const { totalVoters, activeElections, upcomingElections, recentActivities, yearLevelBreakdown, courses } =
+    toRefs(props);
 
-const processingUserId = ref<number | null>(null);
-
-function updateStatus(userId: number, status: 'approved' | 'rejected') {
-    processingUserId.value = userId;
-    router.patch(
-        `/admin/voters/${userId}/status`,
-        { status },
-        {
-            preserveScroll: true,
-            onFinish: () => {
-                processingUserId.value = null;
-            },
-        },
-    );
-}
+const showCredentialModal = ref(false);
 
 const breadcrumbs: BreadcrumbItemType[] = [
     {
@@ -77,7 +50,10 @@ const breadcrumbs: BreadcrumbItemType[] = [
 
     <AdminLayout :breadcrumbs="breadcrumbs">
         <div class="space-y-6 p-6">
-            <h1 class="text-3xl font-bold">Dashboard</h1>
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <h1 class="text-3xl font-bold">Dashboard</h1>
+                <Button @click="showCredentialModal = true">Register Voter</Button>
+            </div>
 
             <!-- Cards -->
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -107,73 +83,16 @@ const breadcrumbs: BreadcrumbItemType[] = [
                 </div>
             </div>
 
-            <!-- Pending Approvals -->
             <div class="rounded-lg border bg-white p-6 shadow-sm">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <h2 class="text-xl font-semibold">Pending Approvals</h2>
-                        <p class="text-sm text-muted-foreground">
-                            {{ pendingApprovalsCount }} waiting for review
-                        </p>
-                    </div>
-                    <TextLink href="/admin/voters">View all voters</TextLink>
-                </div>
-
-                <div class="mt-6 space-y-4">
-                    <div
-                        v-for="pending in pendingApprovals"
-                        :key="pending.id"
-                        class="flex flex-wrap items-center justify-between gap-4 rounded-md border p-4"
-                    >
-                        <div>
-                            <div class="font-semibold">
-                                {{
-                                    pending.first_name || pending.last_name
-                                        ? [pending.first_name, pending.last_name]
-                                              .filter(Boolean)
-                                              .join(' ')
-                                        : pending.email
-                                }}
-                            </div>
-                            <div class="text-sm text-muted-foreground">
-                                {{ pending.email }}
-                            </div>
-                            <div class="text-xs text-muted-foreground">
-                                {{ pending.course || 'No course' }} •
-                                {{ pending.year_level || 'No year level' }} •
-                                Registered {{ pending.registered_at }}
-                            </div>
-                        </div>
-                        <div class="flex gap-2">
-                            <Button
-                                size="sm"
-                                class="bg-green-600 text-white hover:bg-green-700"
-                                :disabled="processingUserId === pending.id"
-                                @click="updateStatus(pending.id, 'approved')"
-                            >
-                                {{
-                                    processingUserId === pending.id
-                                        ? 'Saving...'
-                                        : 'Approve'
-                                }}
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                class="border-red-200 text-red-600 hover:bg-red-50"
-                                :disabled="processingUserId === pending.id"
-                                @click="updateStatus(pending.id, 'rejected')"
-                            >
-                                Reject
-                            </Button>
-                        </div>
-                    </div>
-                    <div
-                        v-if="pendingApprovals.length === 0"
-                        class="rounded-md border border-dashed py-12 text-center text-muted-foreground"
-                    >
-                        No pending approvals right now.
-                    </div>
+                <h2 class="text-xl font-semibold">Voter Registration</h2>
+                <p class="mt-2 text-sm text-muted-foreground">
+                    Admins can add voters directly. This bypasses public sign-ups and keeps records tidy.
+                </p>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <Button @click="showCredentialModal = true">Register Voter</Button>
+                    <Button variant="outline" @click="router.visit('/admin/voters')">
+                        Manage Voters
+                    </Button>
                 </div>
             </div>
 
@@ -286,6 +205,11 @@ const breadcrumbs: BreadcrumbItemType[] = [
                 </div>
             </div>
         </div>
+
+        <VoterCredentialModal
+            v-model:open="showCredentialModal"
+            :courses="courses"
+        />
     </AdminLayout>
 </template>
 

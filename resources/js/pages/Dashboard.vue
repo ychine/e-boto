@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import SimpleToast from '@/components/SimpleToast.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { store as voteStore } from '@/routes/votes';
+import { bulk as voteBulkRoute } from '@/routes/votes';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -81,8 +81,7 @@ const selectedCandidateByPosition = ref<Record<number, number | null>>({});
 
 const voteForm = useForm({
     election_id: null as number | null,
-    position_id: null as number | null,
-    candidate_id: null as number | null,
+    votes: [] as Array<{ position_id: number; candidate_id: number }>,
 });
 
 const page = usePage<{ flash?: { success?: string } }>();
@@ -105,6 +104,10 @@ watch(
 
 const hasActiveElections = computed(
     () => props.activeElections.length > 0,
+);
+
+const selectedCount = computed(() =>
+    Object.values(selectedCandidateByPosition.value).filter(Boolean).length,
 );
 
 const formatDateTime = (value?: string | null): string => {
@@ -134,6 +137,7 @@ function closeVoteModal() {
     voteModalOpen.value = false;
     selectedElection.value = null;
     selectedCandidateByPosition.value = {};
+    voteForm.reset();
 }
 
 function selectCandidate(positionId: number, candidateId: number) {
@@ -143,22 +147,27 @@ function selectCandidate(positionId: number, candidateId: number) {
     };
 }
 
-function submitVote(positionId: number) {
+function submitVotes() {
     const election = selectedElection.value;
     if (!election) {
         return;
     }
 
-    const candidateId = selectedCandidateByPosition.value[positionId];
-    if (!candidateId) {
+    const votes = Object.entries(selectedCandidateByPosition.value)
+        .filter(([, candidateId]) => Boolean(candidateId))
+        .map(([positionId, candidateId]) => ({
+            position_id: Number(positionId),
+            candidate_id: candidateId as number,
+        }));
+
+    if (votes.length === 0) {
         return;
     }
 
     voteForm.election_id = election.id;
-    voteForm.position_id = positionId;
-    voteForm.candidate_id = candidateId;
+    voteForm.votes = votes;
 
-    voteForm.post(voteStore().url, {
+    voteForm.post(voteBulkRoute().url, {
         preserveScroll: true,
         onSuccess: () => {
             closeVoteModal();
@@ -382,10 +391,7 @@ const modalTitle = computed(() =>
                     </DialogDescription>
                 </DialogHeader>
 
-                <div
-                    v-if="selectedElection"
-                    class="space-y-6"
-                >
+                <div v-if="selectedElection" class="space-y-6">
                     <div
                         v-for="position in selectedElection.positions"
                         :key="position.id"
@@ -462,21 +468,29 @@ const modalTitle = computed(() =>
                             You have already voted for this position.
                         </div>
 
-                        <div
-                            v-if="!position.has_voted"
-                            class="mt-3 flex justify-end"
+                    </div>
+                </div>
+
+                <div v-if="selectedElection" class="border-t pt-4">
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <p class="text-sm text-muted-foreground">
+                            {{
+                                selectedCount > 0
+                                    ? `${selectedCount} position${selectedCount > 1 ? 's' : ''} selected`
+                                    : 'Select candidates to enable voting'
+                            }}
+                        </p>
+                        <Button
+                            class="w-full md:w-auto"
+                            :disabled="voteForm.processing || selectedCount === 0"
+                            @click="submitVotes"
                         >
-                            <Button
-                                class="w-full md:w-auto"
-                                :disabled="
-                                    voteForm.processing ||
-                                    !selectedCandidateByPosition[position.id]
-                                "
-                                @click="submitVote(position.id)"
-                            >
-                                {{ voteForm.processing ? 'Submitting...' : 'Cast Vote' }}
-                            </Button>
-                        </div>
+                            {{
+                                voteForm.processing
+                                    ? 'Submitting...'
+                                    : `Cast ${selectedCount || ''} Vote${selectedCount === 1 ? '' : 's'}`
+                            }}
+                        </Button>
                     </div>
                 </div>
 

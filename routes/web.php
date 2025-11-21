@@ -1,14 +1,13 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-use Laravel\Fortify\Features;
-
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Voter\DashboardController as VoterDashboardController;
 use App\Http\Controllers\Voter\VoteController;
 use App\Models\Election;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use Laravel\Fortify\Features;
 
 Route::get('/', function () {
     $currentElection = Election::where('is_active', true)
@@ -23,7 +22,6 @@ Route::get('/', function () {
         ->first();
 
     return Inertia::render('Landing', [
-        'canRegister' => Features::enabled(Features::registration()),
         'currentElection' => $currentElection,
     ]);
 })->name('home');
@@ -32,12 +30,9 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', function (Request $request) {
         return Inertia::render('auth/Login', [
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
-            'canRegister' => Features::enabled(Features::registration()),
             'status' => $request->session()->get('status'),
         ]);
     })->name('login');
-
-    Route::get('/register', fn () => Inertia::render('auth/Register'))->name('register');
 
     Route::get('/forgot-password', function (Request $request) {
         return Inertia::render('auth/ForgotPassword', [
@@ -85,10 +80,14 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         Route::resource('positions', \App\Http\Controllers\Admin\PositionController::class);
         Route::resource('candidates', \App\Http\Controllers\Admin\CandidateController::class);
         Route::get('voters', [\App\Http\Controllers\Admin\VoterController::class, 'index'])->name('voters.index');
+        Route::post('voters', [\App\Http\Controllers\Admin\VoterController::class, 'store'])->name('voters.store');
+        Route::put('voters/{user}', [\App\Http\Controllers\Admin\VoterController::class, 'update'])->name('voters.update');
         Route::patch('voters/{user}/status', [\App\Http\Controllers\Admin\VoterController::class, 'updateStatus'])->name('voters.update-status');
+        Route::get('elections/{election}/attendance/export', [\App\Http\Controllers\Admin\ElectionController::class, 'exportAttendance'])->name('elections.attendance.export');
         Route::get('audit-logs', [\App\Http\Controllers\Admin\AuditLogController::class, 'index'])->name('audit-logs.index');
     });
 
+    Route::post('votes/bulk', [VoteController::class, 'bulkStore'])->name('votes.bulk');
     Route::post('votes', [VoteController::class, 'store'])->name('votes.store');
 });
 

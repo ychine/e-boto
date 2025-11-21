@@ -4,15 +4,12 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
-use App\Models\Election;
-use App\Models\Candidate;
-use App\Models\Vote;
-use App\Models\Attendance;
-use App\Models\AuditLog;
-use App\Models\Voter;
 
 class User extends Authenticatable
 {
@@ -72,34 +69,39 @@ class User extends Authenticatable
         ];
     }
 
-    public function voter(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function voter(): HasOne
     {
         return $this->hasOne(Voter::class);
     }
 
-    public function createdElections(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function createdElections(): HasMany
     {
         return $this->hasMany(Election::class, 'created_by');
     }
 
-    public function candidates(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function candidates(): HasMany
     {
         return $this->hasMany(Candidate::class);
     }
 
-    public function votes(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function votes(): HasMany
     {
         return $this->hasMany(Vote::class, 'voter_id');
     }
 
-    public function attendances(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function attendances(): HasMany
     {
         return $this->hasMany(Attendance::class);
     }
 
-    public function auditLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function auditLogs(): HasMany
     {
         return $this->hasMany(AuditLog::class);
+    }
+
+    public function courseRecord(): BelongsTo
+    {
+        return $this->belongsTo(Course::class, 'course', 'name');
     }
 
     public function isAdmin(): bool

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Attendance;
 use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\Position;
@@ -51,6 +52,12 @@ test('student can cast a vote for an active election', function () {
 
     expect($student->voter)->not->toBeNull()
         ->and($student->voter->times_voted)->toBe(1);
+
+    expect(
+        Attendance::where('user_id', $student->id)
+            ->where('election_id', $election->id)
+            ->exists(),
+    )->toBeTrue();
 });
 
 test('student cannot vote twice for the same position', function () {
@@ -98,4 +105,74 @@ test('student cannot vote twice for the same position', function () {
         ->assertSessionHasErrors('candidate_id');
 });
 
+test('student can cast multiple votes in a single submission', function () {
+    $student = User::factory()->create([
+        'role' => 'student',
+        'status' => 'approved',
+    ]);
 
+    $election = Election::create([
+        'title' => 'General Election',
+        'is_active' => true,
+        'starts_at' => now()->subDay(),
+        'ends_at' => now()->addDay(),
+        'created_by' => $student->id,
+    ]);
+
+    $president = Position::create([
+        'name' => 'President',
+        'description' => 'Leads the council',
+        'max_votes' => 1,
+        'election_id' => $election->id,
+    ]);
+
+    $secretary = Position::create([
+        'name' => 'Secretary',
+        'description' => 'Records minutes',
+        'max_votes' => 1,
+        'election_id' => $election->id,
+    ]);
+
+    $presCandidate = Candidate::create([
+        'position_id' => $president->id,
+        'name' => 'Taylor Green',
+        'status' => 'active',
+    ]);
+
+    $secCandidate = Candidate::create([
+        'position_id' => $secretary->id,
+        'name' => 'Morgan Blue',
+        'status' => 'active',
+    ]);
+
+    $this->actingAs($student)
+        ->post(route('votes.bulk'), [
+            'election_id' => $election->id,
+            'votes' => [
+                [
+                    'position_id' => $president->id,
+                    'candidate_id' => $presCandidate->id,
+                ],
+                [
+                    'position_id' => $secretary->id,
+                    'candidate_id' => $secCandidate->id,
+                ],
+            ],
+        ])
+        ->assertRedirect(route('dashboard'));
+
+    expect(
+        Vote::where('voter_id', $student->id)
+            ->where('election_id', $election->id)
+            ->count(),
+    )->toBe(2);
+
+    $student->refresh();
+    expect($student->voter?->times_voted)->toBe(2);
+
+    expect(
+        Attendance::where('user_id', $student->id)
+            ->where('election_id', $election->id)
+            ->exists(),
+    )->toBeTrue();
+});
