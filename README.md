@@ -33,9 +33,12 @@ A full-stack electronic voting application built with Laravel and Vue.js, design
 ### Installation
 
 ```bash
+# Go to HTDOCS folder in xampp folder in C:
+cd c:\xampp\htdocs\
+
 # 1. Clone the repository
 git clone https://github.com/ychine/e-boto
-cd eboto
+cd e-boto
 
 # 2. Install PHP dependencies
 composer install
@@ -50,9 +53,12 @@ cp .env.example .env
 # 5. Generate application key
 php artisan key:generate
 
-# 6. Run database migrations and seeders
-php artisan migrate
-php artisan db:seed
+# 6. Go to XAMPP shell type these **line by line**. Assuming you have eboto_db.sql on c:\xampp\htdocs\e-boto\e-boto_db.sql.
+mysql -u root
+DROP DATABASE IF EXISTS eboto_db;
+CREATE DATABASE eboto_db;
+quit
+mysql -u root < "c:\xampp\htdocs\e-boto\e-boto_db.sql"
 
 # 7. Build frontend assets
 npm run dev
