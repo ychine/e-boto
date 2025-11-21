@@ -28,12 +28,13 @@ A full-stack electronic voting application built with Laravel and Vue.js, design
 - Node.js & npm
 - MariaDB / MySQL
 - XAMPP (or any Apache + PHP setup)
+- Git Bash https://git-scm.com/install/windows
 
 ### Installation
 
 ```bash
 # 1. Clone the repository
-git clone [<repo-url>](https://github.com/ychine/e-boto)
+git clone https://github.com/ychine/e-boto
 cd eboto
 
 # 2. Install PHP dependencies
