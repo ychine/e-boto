@@ -333,20 +333,9 @@ php artisan view:clear
 ## Authentication & Security
 
 - **Laravel Fortify** handles authentication flows (login, registration, password reset)
-- **Two-Factor Authentication (2FA)** support with QR code setup and recovery codes
 - **Email Verification** for new user accounts
 - **Password Confirmation** for sensitive operations
 - Audit logging for admin actions
 
----
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
+This project is for a client.
