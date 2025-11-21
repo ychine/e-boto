@@ -53,12 +53,12 @@ cp .env.example .env
 # 5. Generate application key
 php artisan key:generate
 
-# 6. Go to XAMPP shell type these **line by line**. Assuming you have eboto_db.sql on c:\xampp\htdocs\e-boto\e-boto_db.sql.
+# 6. Go to XAMPP shell type these **line by line**. Assuming you have eboto_db.sql on c:\xampp\htdocs\e-boto\eboto_db.sql.
 mysql -u root
 DROP DATABASE IF EXISTS eboto_db;
 CREATE DATABASE eboto_db;
 quit
-mysql -u root < "c:\xampp\htdocs\e-boto\e-boto_db.sql"
+mysql -u root < "c:\xampp\htdocs\e-boto\eboto_db.sql"
 
 # 7. Build frontend assets
 npm run dev
