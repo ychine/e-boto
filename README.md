@@ -33,7 +33,7 @@ A full-stack electronic voting application built with Laravel and Vue.js, design
 
 ```bash
 # 1. Clone the repository
-git clone <repo-url>
+git clone [<repo-url>](https://github.com/ychine/e-boto)
 cd eboto
 
 # 2. Install PHP dependencies
